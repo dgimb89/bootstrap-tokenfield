@@ -351,12 +351,14 @@
       })
 
       // Allow changing token data before creating it
-      var createEvent = $.Event('tokenfield:bulkcreatetoken', { attrsList: attrsList })
+      var createEvent = $.Event('tokenfield:bulkcreatetokens', { attrsList: attrsList })
       this.$element.trigger(createEvent)
 
       // Bail out if there if attributes are empty or event was defaultPrevented
       // TODO: Handle this in callback?
       // if (!createEvent.attrs || createEvent.isDefaultPrevented()) return
+
+      attrsList = createEvent.attrsList
 
       var $token = $($.map(attrsList, function() {
         var element = document.createElement('div')
