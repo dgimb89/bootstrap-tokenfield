@@ -309,12 +309,13 @@
       // Trigger change event on the original field
       if (triggerChange) {
         this.$element.val( this.getTokensList() ).trigger( $.Event('change', { initiator: 'tokenfield' }) )
-        // Update tokenfield dimensions
-        var _self = this
-        setTimeout(function () {
-          _self.update()
-        }, 0)
       }
+
+      // Update tokenfield dimensions
+      var _self = this
+      setTimeout(function () {
+        _self.update()
+      }, 0)
 
       // Return original element
       return this.$element.get(0)
