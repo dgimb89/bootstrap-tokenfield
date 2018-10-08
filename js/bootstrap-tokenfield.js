@@ -477,14 +477,6 @@
       var _self = this
       this.bulkCreateTokens(tokens)
 
-      if (triggerChange) {
-        this.$element.val( this.getTokensList() ).trigger( $.Event('change', { initiator: 'tokenfield' }) )
-      }
-
-      setTimeout(function () {
-        _self.update()
-      }, 0)
-
       return this.$element.get(0)
     }
 
