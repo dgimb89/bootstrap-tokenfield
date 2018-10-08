@@ -192,7 +192,6 @@
       args[0] = $.extend( {}, defaults, args[0] )
 
       this.$input.typeahead.apply( this.$input, args )
-      this.$hint = this.$input.prev('.tt-hint')
       this.typeahead = true
     }
   }
@@ -269,9 +268,11 @@
           parseInt($tokenLabel.css('margin-right'), 10)
       }
 
-      $tokenLabel
-        .text(attrs.label)
-        .css('max-width', this.maxTokenWidth)
+      $tokenLabel.css('max-width', this.maxTokenWidth)
+      if (this.options.html)
+        $tokenLabel.html(attrs.label)
+      else
+        $tokenLabel.text(attrs.label)
 
       // Listen to events on token
       $token
@@ -311,16 +312,154 @@
       }
 
       // Update tokenfield dimensions
-      this.update()
+      var _self = this
+      setTimeout(function () {
+        _self.update()
+      }, 0)
+
+      // Return original element
+      return this.$element.get(0)
+    }
+
+  , bulkCreateTokens: function(tokens, triggerChange) {
+      var _self = this
+      var attrsList = []
+
+      if (typeof triggerChange === 'undefined') {
+        triggerChange = true
+     }
+
+      $.each(tokens, function(idx, attrs) {
+        if (typeof attrs === 'string') {
+          attrs = { value: attrs, label: attrs }
+        } else {
+          // Copy objects to prevent contamination of data sources.
+          attrs = $.extend( {}, attrs )
+        }
+
+        // Normalize label and value
+        attrs.value = $.trim(attrs.value.toString());
+        attrs.label = attrs.label && attrs.label.length ? $.trim(attrs.label) : attrs.value
+
+        // Bail out if has no value or label, or label is too short
+        if (!attrs.value.length || !attrs.label.length || attrs.label.length <= _self.options.minLength) return
+
+        // Bail out if maximum number of tokens is reached
+        if (_self.options.limit && _self.attrsList.length >= _self.options.limit) return false
+
+        attrsList.push(attrs)
+      })
+
+      // Allow changing token data before creating it
+      var createEvent = $.Event('tokenfield:bulkcreatetokens', { attrsList: attrsList })
+      this.$element.trigger(createEvent)
+
+      // Bail out if there if attributes are empty or event was defaultPrevented
+      // TODO: Handle this in callback?
+      // if (!createEvent.attrs || createEvent.isDefaultPrevented()) return
+
+      attrsList = createEvent.attrsList
+
+      var $token = $($.map(attrsList, function() {
+        var element = document.createElement('div')
+        element.setAttribute('class', 'token')
+        return element
+      }))
+
+      // Insert token into HTML
+      if (this.$input.hasClass('tt-input')) {
+        // If the input has typeahead enabled, insert token before it's parent
+        this.$input.parent().before( $token )
+      } else {
+        this.$input.before( $token )
+      }
+
+      $token.append('<span class="token-label" />')
+        .append('<a href="#" class="close" tabindex="-1">&times;</a>')
+      $token.each(function(idx) { $(this).data('attrs', attrsList[idx]) })
+
+      // Temporarily set input width to minimum
+      this.$input.css('width', this.options.minWidth + 'px')
+
+      var $tokenLabel = $token.find('.token-label')
+        , $closeButton = $token.find('.close')
+
+      // Determine maximum possible token label width
+      if (!this.maxTokenWidth) {
+        this.maxTokenWidth =
+          this.$wrapper.width() - $closeButton.outerWidth() -
+          parseInt($closeButton.css('margin-left'), 10) -
+          parseInt($closeButton.css('margin-right'), 10) -
+          parseInt($token.css('border-left-width'), 10) -
+          parseInt($token.css('border-right-width'), 10) -
+          parseInt($token.css('padding-left'), 10) -
+          parseInt($token.css('padding-right'), 10)
+          parseInt($tokenLabel.css('border-left-width'), 10) -
+          parseInt($tokenLabel.css('border-right-width'), 10) -
+          parseInt($tokenLabel.css('padding-left'), 10) -
+          parseInt($tokenLabel.css('padding-right'), 10)
+          parseInt($tokenLabel.css('margin-left'), 10) -
+          parseInt($tokenLabel.css('margin-right'), 10)
+      }
+
+      $tokenLabel.css('max-width', this.maxTokenWidth)
+
+      if (this.options.html)
+        $tokenLabel.html(function(idx) { return attrsList[idx].label })
+      else
+        $tokenLabel.text(function(idx) { return attrsList[idx].label })
+
+      // Listen to events on token
+      $token
+        .on('mousedown',  function (e) {
+          if (_self._disabled || _self._readonly) return false
+          _self.preventDeactivation = true
+        })
+        .on('click',    function (e) {
+          if (_self._disabled || _self._readonly) return false
+          _self.preventDeactivation = false
+
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault()
+            return _self.toggle( $token )
+          }
+
+          _self.activate( $token, e.shiftKey, e.shiftKey )
+        })
+        .on('dblclick', function (e) {
+          if (_self._disabled || _self._readonly || !_self.options.allowEditing ) return false
+          _self.edit( $token )
+        })
+
+      $closeButton
+          .on('click',  $.proxy(this.remove, this))
+
+      // Trigger bulkcreatedtokens event on the original field
+      // indicating that the token is now in the DOM
+      this.$element.trigger($.Event('tokenfield:bulkcreatedtokens', {
+        attrsList: attrsList,
+        relatedTargets: $token
+      }))
+
+      // Trigger change event on the original field
+      if (triggerChange) {
+        this.$element.val( this.getTokensList() ).trigger( $.Event('change', { initiator: 'tokenfield' }) )
+      }
+
+      // Update tokenfield dimensions
+      var _self = this
+      setTimeout(function () {
+        _self.update()
+      }, 0)
 
       // Return original element
       return this.$element.get(0)
     }
 
   , setTokens: function (tokens, add, triggerChange) {
-      if (!tokens) return
-
       if (!add) this.$wrapper.find('.token').remove()
+
+      if (!tokens) return
 
       if (typeof triggerChange === 'undefined') {
           triggerChange = true
@@ -336,9 +475,7 @@
       }
 
       var _self = this
-      $.each(tokens, function (i, attrs) {
-        _self.createToken(attrs, triggerChange)
-      })
+      this.bulkCreateTokens(tokens)
 
       return this.$element.get(0)
     }
@@ -378,6 +515,16 @@
 
   , getInput: function() {
     return this.$input.val()
+  }
+
+  , setInput: function (val) {
+      if (this.$input.hasClass('tt-input')) {
+          // Typeahead acts weird when simply setting input value to empty,
+          // so we set the query to empty instead
+          this.$input.typeahead('val', val)
+      } else {
+          this.$input.val(val)
+      }
   }
 
   , listen: function () {
@@ -644,13 +791,7 @@
       if (tokensBefore == this.getTokensList() && this.$input.val().length)
         return false // No tokens were added, do nothing (prevent form submit)
 
-      if (this.$input.hasClass('tt-input')) {
-        // Typeahead acts weird when simply setting input value to empty,
-        // so we set the query to empty instead
-        this.$input.typeahead('val', '')
-      } else {
-        this.$input.val('')
-      }
+      this.setInput('')
 
       if (this.$input.data( 'edit' )) {
         this.unedit(focus)
@@ -881,12 +1022,11 @@
         }
 
         this.$input.width( mirrorWidth )
-
-        if (this.$hint) {
-          this.$hint.width( mirrorWidth )
-        }
       }
       else {
+        //temporary reset width to minimal value to get proper results
+        this.$input.width(this.options.minWidth);
+
         var w = (this.textDirection === 'rtl')
               ? this.$input.offset().left + this.$input.outerWidth() - this.$wrapper.offset().left - parseInt(this.$wrapper.css('padding-left'), 10) - inputPadding - 1
               : this.$wrapper.offset().left + this.$wrapper.width() + parseInt(this.$wrapper.css('padding-left'), 10) - this.$input.offset().left - inputPadding;
@@ -895,10 +1035,6 @@
         // dimensions returned by jquery will be NaN -> we default to 100%
         // so placeholder won't be cut off.
         isNaN(w) ? this.$input.width('100%') : this.$input.width(w);
-
-        if (this.$hint) {
-          isNaN(w) ? this.$hint.width('100%') : this.$hint.width(w);
-        }
       }
     }
 
@@ -1010,6 +1146,7 @@
   $.fn.tokenfield.defaults = {
     minWidth: 60,
     minLength: 0,
+    html: true,
     allowEditing: true,
     allowPasting: true,
     limit: 0,
