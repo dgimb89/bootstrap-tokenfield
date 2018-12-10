@@ -421,14 +421,14 @@
 
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault()
-            return _self.toggle( $token )
+            return _self.toggle( $(this) )
           }
 
-          _self.activate( $token, e.shiftKey, e.shiftKey )
+          _self.activate( $(this), e.shiftKey, e.shiftKey )
         })
         .on('dblclick', function (e) {
           if (_self._disabled || _self._readonly || !_self.options.allowEditing ) return false
-          _self.edit( $token )
+          _self.edit( $(this) )
         })
 
       $closeButton
