@@ -881,9 +881,7 @@
   , activateAll: function() {
       var _self = this
 
-      this.$wrapper.find('.token').each( function (i) {
-        _self.activate($(this), i !== 0, false, false)
-      })
+      _self.activate(this.$wrapper.find('.token'), false, false, false);
     }
 
   , deactivate: function($token) {
