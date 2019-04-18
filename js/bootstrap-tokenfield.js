@@ -984,8 +984,8 @@
 
       // Focus, when necessary:
       // When there are no more tokens, or if this was the first token
-      // and it was removed with backspace or it was clicked on
-      if (!this.$wrapper.find('.token').length || e.type === 'click' || firstToken) this.$input.focus()
+      // and it was removed with backspace
+      if (!this.$wrapper.find('.token').length || firstToken) this.$input.focus()
 
       // Adjust input width
       this.$input.css('width', this.options.minWidth + 'px')
